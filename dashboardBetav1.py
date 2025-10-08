@@ -11,7 +11,6 @@ from lifelines import CoxPHFitter, KaplanMeierFitter
 
 sns.set_style("whitegrid")
 
-# Налаштування назв колонок
 DURATION_COL = "тривалість"
 EVENT_COL = "подія"
 FEATURE_COLUMNS = [
@@ -25,7 +24,7 @@ def ensure_columns(df, required_cols):
         raise ValueError(f"У CSV відсутні колонки: {missing}\nЄ колонки: {df.columns.tolist()}")
 
 def train_cox_model(df):
-    # lifelines очікує EVENT як 0/1 або True/False
+
     if df[EVENT_COL].dtype == object:
         df[EVENT_COL] = df[EVENT_COL].astype(int)
     cph = CoxPHFitter()
@@ -47,9 +46,9 @@ def generate_random_data(n=120):
         "свято": rng.integers(0, 2, size=n),
         "вік_років": rng.integers(1, 50, size=n)
     })
-    # Синтетична назва та тип елемента (якщо у CSV немає таких)
+
     df["назва"] = ["Елемент-" + str(i) for i in df["ід"]]
-    # Простий генератор типів: частково залежить від потужності, щоб було реалістично
+
     def infer_type_by_power(p):
         if p > 6000:
             return "Генератор"
@@ -60,7 +59,7 @@ def generate_random_data(n=120):
     return df
 
 def run_dashboard():
-    # Спроба читання CSV
+
     try:
         df = pd.read_csv("cox_energy_dataset.csv", encoding="utf-8-sig")
         ensure_columns(df, [DURATION_COL, EVENT_COL] + FEATURE_COLUMNS)
@@ -75,11 +74,11 @@ def run_dashboard():
             "⚠️ Дані — Система моніторингу",
             f"CSV не завантажено для Системи моніторингу завантаженості енергосистеми, використані випадкові дані.\nПричина:\n{e}"
         )
-    # Якщо у CSV немає стовпців "назва"/"тип" — підставимо (або зробимо інфраструктурну інтерпретацію)
+
     if "назва" not in df.columns:
         df["назва"] = df["ід"].astype(str).apply(lambda x: f"Елемент-{x}")
     if "тип" not in df.columns:
-        # якщо є "потужність_мвт" — зробимо просту інтерпретацію типу
+
         def infer_type_row(r):
             try:
                 p = float(r.get("потужність_мвт", 0))
@@ -96,29 +95,29 @@ def run_dashboard():
     root.title(f"Система моніторингу завантаженості енергосистеми — {source_label}")
     root.geometry("1350x1000")
 
-    # --- Сучасна стилізація ---
+
     style = ttk.Style(root)
     try:
         style.theme_use("clam")
     except Exception:
         pass
-    # Загальні налаштування шрифтів і кнопок
+
     style.configure(".", font=("Segoe UI", 10))
     style.configure("Title.TLabel", font=("Segoe UI", 16, "bold"))
     style.configure("TButton", padding=6)
     style.configure("Info.TLabel", background="#f0f4ff", foreground="#0b3d91", font=("Segoe UI", 10, "bold"))
-    # Сучасні кольори для прогресбару (win32 ttk may ignore some options)
+
     style.configure("green.Horizontal.TProgressbar", troughcolor="#e6f4ea", background="#2a9d8f")
 
-    # Сучасна тема для графіків
+
     sns.set_theme(style="whitegrid", palette="deep")
-    # Спроба застосувати один із сучасних стилів; якщо недоступний — використаємо те, що є від seaborn
+
     preferred_styles = ["seaborn-darkgrid", "seaborn-v0_8-darkgrid", "ggplot"]
     for s in preferred_styles:
         if s in plt.style.available:
             plt.style.use(s)
             break
-    # якщо жоден з перелічених не доступний — залишаємо rcParams від seaborn (без додаткового стилю)
+
     plt.rcParams.update({
         "figure.dpi": 100,
         "axes.titlesize": 12,
@@ -133,7 +132,6 @@ def run_dashboard():
     top_frame = ttk.Frame(root)
     top_frame.pack(pady=5)
 
-    # верхня панель: вибір запису — індекс рядка та Combobox з ID, коротка картка запису, ризик та індикатор
     ttk.Label(top_frame, text="Оберіть елемент мережі (ID) або індекс рядка:").pack(side=tk.LEFT, padx=5)
 
     obj_var = tk.IntVar(value=0)
@@ -141,7 +139,7 @@ def run_dashboard():
                        textvariable=obj_var, width=8)
     spin.pack(side=tk.LEFT, padx=5)
 
-    # Combobox з ID (колонка "ід" якщо є)
+
     if "ід" in df.columns:
         id_list = df["ід"].astype(str).tolist()
     else:
@@ -151,7 +149,7 @@ def run_dashboard():
     id_menu.pack(side=tk.LEFT, padx=5)
 
     def on_id_change(event=None):
-        # при виборі ID знаходимо його індекс і встановлюємо спінбокс
+
         try:
             sel = id_var.get()
             idxs = df.index[df["ід"].astype(str) == sel].tolist() if "ід" in df.columns else []
@@ -162,7 +160,7 @@ def run_dashboard():
             pass
     id_menu.bind("<<ComboboxSelected>>", on_id_change)
 
-    # Коротка картка поточного запису (id, навантаження, потужність, завантаженість)
+
     record_frame = ttk.Frame(top_frame)
     record_frame.pack(side=tk.LEFT, padx=10)
     record_summary_label = ttk.Label(record_frame, text="Елемент: —", justify=tk.LEFT)
@@ -171,7 +169,7 @@ def run_dashboard():
     risk_label = ttk.Label(top_frame, text="", font=("Arial", 14))
     risk_label.pack(side=tk.LEFT, padx=15)
 
-    # --- Індикатор поточного навантаження (праворуч) ---
+
     load_frame = ttk.Frame(top_frame)
     load_frame.pack(side=tk.RIGHT, padx=10)
     ttk.Label(load_frame, text="Поточне навантаження:", style="Info.TLabel").pack(side=tk.TOP, padx=4, pady=0)
@@ -183,7 +181,7 @@ def run_dashboard():
     notebook = ttk.Notebook(root)
     notebook.pack(fill=tk.BOTH, expand=True)
 
-    # --- Вкладки ---
+
     frame_surv = ttk.Frame(notebook)
     frame_hr = ttk.Frame(notebook)
     frame_ch = ttk.Frame(notebook)
@@ -194,7 +192,7 @@ def run_dashboard():
     notebook.add(frame_ch, text="Кумулятивний ризик відмов")
     notebook.add(frame_groups, text="Виживаність по групах")
 
-    # --- Графіки ---
+
     fig_surv, ax_surv = plt.subplots(figsize=(6, 4))
     fig_surv.patch.set_facecolor("#fafafa")
     ax_surv.set_facecolor("#ffffff")
@@ -213,11 +211,10 @@ def run_dashboard():
     canvas_ch = FigureCanvasTkAgg(fig_ch, master=frame_ch)
     canvas_ch.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-    # --- Вкладка виживаності по групах ---
     group_controls = ttk.Frame(frame_groups)
     group_controls.pack(pady=5)
 
-    # Доступні змінні для групування: всі фічі + (свято залишаємо, навіть якщо бінарна)
+
     groupable_vars = [c for c in FEATURE_COLUMNS if c in df.columns]
     group_var = tk.StringVar(value=groupable_vars[0] if groupable_vars else FEATURE_COLUMNS[0])
 
@@ -229,12 +226,11 @@ def run_dashboard():
     canvas_groups = FigureCanvasTkAgg(fig_groups, master=frame_groups)
     canvas_groups.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-    # --- Текстовий звіт ---
     report_text = tk.Text(root, height=16, wrap="word", font=("Arial", 11))
     report_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     def update_dashboard():
-        # Безпека індексу
+
         try:
             idx = int(obj_var.get())
         except Exception:
@@ -247,7 +243,7 @@ def run_dashboard():
 
         row = df.iloc[[idx]][FEATURE_COLUMNS]
 
-        # Оновити Combobox ID щоб відображав реальний 'ід' поточного рядка (якщо є)
+
         try:
             if "ід" in df.columns:
                 current_id = str(df.iloc[idx]["ід"])
@@ -256,16 +252,16 @@ def run_dashboard():
         except Exception:
             pass
 
-        # --- Survival ---
+
         surv = cph.predict_survival_function(row)
         ax_surv.clear()
         yvals = surv.values.flatten()
         ax_surv.plot(surv.index, yvals, linewidth=2, color="blue", label="Ймовірність виживання")
-        # Медіана виживаності (перше t, де S(t) <= 0.5)
+
         try:
             mask = yvals <= 0.5
             if mask.any():
-                t50 = surv.index[np.argmax(mask)]  # перший True
+                t50 = surv.index[np.argmax(mask)] 
                 ax_surv.axvline(t50, color="red", linestyle="--", label=f"Медіана ≈ {t50:.0f}")
         except Exception:
             pass
@@ -275,7 +271,7 @@ def run_dashboard():
         ax_surv.legend()
         canvas_surv.draw()
 
-        # --- Hazard Ratios ---
+
         ax_hr.clear()
         summary = cph.summary
         if not summary.empty:
@@ -288,7 +284,7 @@ def run_dashboard():
             ax_hr.text(0.5, 0.5, "Немає коефіцієнтів", ha="center", va="center")
         canvas_hr.draw()
 
-        # --- Кумулятивний ризик ---
+
         ch = cph.predict_cumulative_hazard(row)
         ax_ch.clear()
         ax_ch.plot(ch.index, ch.values.flatten(), linewidth=2, color="purple")
@@ -297,12 +293,12 @@ def run_dashboard():
         ax_ch.set_ylabel("Кумулятивний ризик")
         canvas_ch.draw()
 
-        # --- Виживаність по групах ---
+
         ax_groups.clear()
         kmf = KaplanMeierFitter()
         var = group_var.get()
 
-        # Якщо вибраної змінної немає (наприклад, у CSV), підставимо першу доступну
+
         if var not in df.columns:
             if groupable_vars:
                 var = groupable_vars[0]
@@ -313,13 +309,13 @@ def run_dashboard():
                 return
 
         unique_vals = df[var].nunique()
-        # Числова і має достатньо різних значень → квантили
+
         if pd.api.types.is_numeric_dtype(df[var]) and unique_vals > 3:
             df["_group"] = pd.qcut(df[var], q=3,
                                    labels=["Низьке", "Середнє", "Високе"],
                                    duplicates="drop")
         else:
-            # Категоріальна або двійкова/мало унікальних → як є
+
             df["_group"] = df[var].astype(str)
 
         for val in sorted(df["_group"].unique()):
@@ -336,9 +332,9 @@ def run_dashboard():
         ax_groups.legend()
         canvas_groups.draw()
 
-        # --- Risk label ---
+
         risk_score = float(cph.predict_partial_hazard(row).values[0])
-        # Інтерпретація часткового ризику у термінах навантаження/стану
+
         if risk_score < 0.8:
             risk_label.config(text="🟢 Низьке навантаження", foreground="green")
         elif risk_score < 1.2:
@@ -346,7 +342,7 @@ def run_dashboard():
         else:
             risk_label.config(text="🔴 Високе навантаження", foreground="red")
 
-        # --- Оновлення індикатора поточного навантаження ---
+
         try:
             curr_load = float(row["навантаження_мвт"].values[0])
             min_load, max_load = float(df["навантаження_мвт"].min()), float(df["навантаження_мвт"].max())
@@ -361,12 +357,12 @@ def run_dashboard():
             load_bar['value'] = 0
             load_val_label.config(text="— МВт")
 
-        # --- Оновити картку запису (коротка інформація) ---
+
         try:
             info_parts = []
             if "ід" in df.columns:
                 info_parts.append(f"ID: {df.iloc[idx]['ід']}")
-            # додамо назву/тип якщо є
+
             if "назва" in df.columns:
                 info_parts.insert(0, f"{df.iloc[idx]['назва']}")
             if "тип" in df.columns:
@@ -381,22 +377,21 @@ def run_dashboard():
         except Exception:
             record_summary_label.config(text="Елемент: —")
 
-        # --- Оновити панель детальної інформації (повний рядок + інтерпретація) ---
+
         try:
             details_text.delete("1.0", tk.END)
-            # повний рядок (усі колонки)
+  
             full_row = df.iloc[idx].to_dict()
             details_text.insert(tk.END, "Повні дані елемента:\n")
             for k, v in full_row.items():
                 details_text.insert(tk.END, f"  {k}: {v}\n")
-            # якщо немає 'тип' — додамо інтерпретацію і підкажемо користувачу
+
             if ("тип" not in df.columns) or (not str(full_row.get("тип")).strip()):
                 inferred = infer_type_row(full_row) if 'infer_type_row' in globals() else "Н/д"
                 details_text.insert(tk.END, f"\nІнтерпретація типу: {inferred}\n")
         except Exception:
             pass
 
-        # --- Автоматичний звіт ---
         report_text.delete("1.0", tk.END)
         if not summary.empty:
             report_text.insert(tk.END, "📊 Звіт моніторингу завантаженості (модель Кокса)\n\n")
@@ -431,12 +426,12 @@ def run_dashboard():
         source_label = "випадкові дані"
         title.config(text=f"Система моніторингу завантаженості енергосистеми ({source_label})")
         root.title(f"Система моніторингу завантаженості енергосистеми — {source_label}")
-        # Оновити список змінних для групування
+
         groupable_vars = [c for c in FEATURE_COLUMNS if c in df.columns]
         group_menu["values"] = groupable_vars
         if groupable_vars:
             group_var.set(groupable_vars[0])
-        # Оновити список ID та спінбокс верхнього контролу
+
         try:
             if "ід" in df.columns:
                 new_ids = df["ід"].astype(str).tolist()
@@ -447,7 +442,7 @@ def run_dashboard():
                 id_var.set(new_ids[0])
         except Exception:
             pass
-        # Якщо немає колонок назва/тип — додати їх для тестових даних (вже робиться у генераторі)
+
         if "назва" not in df.columns:
             df["назва"] = df["ід"].astype(str).apply(lambda x: f"Елемент-{x}")
         if "тип" not in df.columns:
@@ -455,12 +450,12 @@ def run_dashboard():
         spin.config(to=max(0, len(df)-1))
         update_dashboard()
 
-    # Кнопки
+
     btn_frame = ttk.Frame(root)
     btn_frame.pack(pady=5)
     ttk.Button(btn_frame, text="🔄 Згенерувати тестові дані", command=regenerate_data).pack(side=tk.LEFT, padx=5)
     ttk.Button(btn_frame, text="Оновити", command=update_dashboard).pack(side=tk.LEFT, padx=5)
-    # Кнопка показу детальної картки елемента
+
     show_details = tk.BooleanVar(value=False)
     def toggle_details():
         if show_details.get():
@@ -474,15 +469,13 @@ def run_dashboard():
     details_btn = ttk.Button(btn_frame, text="Показати деталі", command=toggle_details)
     details_btn.pack(side=tk.LEFT, padx=5)
 
-    # --- Панель детальної інформації (прихована за замовчуванням) ---
     details_frame = ttk.Frame(root, relief=tk.RIDGE, padding=6)
     details_text = tk.Text(details_frame, height=6, wrap="word", font=("Segoe UI", 10))
     details_text.pack(fill=tk.BOTH, expand=True)
-    # початково прихована; показується кнопкою
 
-    # Початкове оновлення та запуск
     update_dashboard()
     root.mainloop()
 
 if __name__ == "__main__":
     run_dashboard()
+
