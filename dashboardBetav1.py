@@ -358,6 +358,7 @@ def run_dashboard():
             load_val_label.config(text="— МВт")
 
 
+        # --- Оновити картку запису (коротка інформація) ---
         try:
             info_parts = []
             if "ід" in df.columns:
@@ -367,12 +368,16 @@ def run_dashboard():
                 info_parts.insert(0, f"{df.iloc[idx]['назва']}")
             if "тип" in df.columns:
                 info_parts.insert(1, f"({df.iloc[idx]['тип']})")
+            # Явно беремо значення з однорядкового DataFrame через .iloc[0]
             if "навантаження_мвт" in row.columns:
-                info_parts.append(f"Навантаження: {float(row['навантаження_мвт']):.0f} МВт")
+                val = float(row["навантаження_мвт"].iloc[0])
+                info_parts.append(f"Навантаження: {val:.0f} МВт")
             if "потужність_мвт" in row.columns:
-                info_parts.append(f"Потужність: {float(row['потужність_мвт']):.0f} МВт")
+                val = float(row["потужність_мвт"].iloc[0])
+                info_parts.append(f"Потужність: {val:.0f} МВт")
             if "завантаженість" in row.columns:
-                info_parts.append(f"Завантаженість: {float(row['завантаженість']):.2f}")
+                val = float(row["завантаженість"].iloc[0])
+                info_parts.append(f"Завантаженість: {val:.2f}")
             record_summary_label.config(text="  • ".join(info_parts) if info_parts else "Елемент: —")
         except Exception:
             record_summary_label.config(text="Елемент: —")
@@ -478,4 +483,3 @@ def run_dashboard():
 
 if __name__ == "__main__":
     run_dashboard()
-
